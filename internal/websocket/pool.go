@@ -1,6 +1,11 @@
 package websocket
 
-import log "github.com/sirupsen/logrus"
+import (
+	"database/sql"
+	"fmt"
+
+	log "github.com/sirupsen/logrus"
+)
 
 type Pool struct {
 	Register   chan *Client
@@ -8,9 +13,10 @@ type Pool struct {
 	Clients    map[*Client]bool
 	Broadcast  chan Message
 	Rooms      map[string][]*Client
+	conn       *sql.DB
 }
 
-func NewPool() *Pool {
+func NewPool(conn *sql.DB) *Pool {
 	return &Pool{
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
@@ -24,6 +30,8 @@ func NewPool() *Pool {
 			"5": {},
 			"6": {},
 		},
+
+		conn: conn,
 	}
 }
 func (pool *Pool) Start() {
@@ -43,14 +51,15 @@ func (pool *Pool) Start() {
 
 				}
 			}
-			
+
 			log.Info("Size of Connection Pool: ", len(pool.Clients))
+			fmt.Println(pool.Clients)
 			log.Info(" Another One Bites the Dust")
 
 		case message := <-pool.Broadcast:
 
 			if message.Data.RoomId != "" {
-				log.Info("Sending message to room: ", message.Data.RoomId)
+				log.Info(message.Data.Username, " Has joined in room: ", message.Data.RoomId)
 				if receivers, ok := pool.Rooms[message.Data.RoomId]; ok {
 					for _, receiver := range receivers {
 						if err := receiver.Conn.WriteJSON(message); err != nil {

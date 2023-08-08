@@ -14,7 +14,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-
 func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -23,7 +22,6 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	}
 	return ws, nil
 }
-
 
 func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("WebSocket Endpoint Hit")
@@ -37,5 +35,8 @@ func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
 		Pool:       pool,
 		RemoteAddr: conn.RemoteAddr().String(),
 	}
+
+	fmt.Println("Client Connected", client.RemoteAddr)
+
 	client.Read()
 }

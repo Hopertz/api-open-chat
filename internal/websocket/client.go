@@ -54,14 +54,20 @@ func (c *Client) Read() {
 
 	for {
 
+		c.Pool.Clients[c] = true // add client to pool
+
+		fmt.Println(c.Pool.Clients)
 		fmt.Println(c.Pool.Rooms)
+
 		_, message, err := c.Conn.ReadMessage()
+
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
 		var msg Message
+
 		if err := json.Unmarshal(message, &msg); err != nil {
 			continue
 		}
@@ -75,13 +81,25 @@ func (c *Client) Read() {
 		if msgType == msgTypeJoin {
 
 			if msg.Data.RoomId != "" {
-				if _, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
-					c.Pool.Rooms[msg.Data.RoomId] = append(c.Pool.Rooms[msg.Data.RoomId], c)
-					c.Pool.Clients[c] = true
+				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
+
+					if !checkIfClientInroom(room, c) {
+						c.Pool.Rooms[msg.Data.RoomId] = append(room, c)
+						c.Pool.Broadcast <- msg
+					}
+
 				}
-
-				c.Pool.Broadcast <- msg
-
+			}
+		} else if msgType == msgTypeRoom {
+			if msg.Data.RoomId != "" {
+				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
+					for _, receiver := range room {
+						if err := receiver.Conn.WriteJSON(msg); err != nil {
+							log.Println(err)
+							return
+						}
+					}
+				}
 			}
 		}
 
