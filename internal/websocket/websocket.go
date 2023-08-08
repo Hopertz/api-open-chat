@@ -33,10 +33,9 @@ func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &Client{
-		Conn: conn,
-		Pool: pool,
+		Conn:       conn,
+		Pool:       pool,
+		RemoteAddr: conn.RemoteAddr().String(),
 	}
-
-	pool.Register <- client
 	client.Read()
 }

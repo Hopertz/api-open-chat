@@ -7,7 +7,7 @@ type Pool struct {
 	Unregister chan *Client
 	Clients    map[*Client]bool
 	Broadcast  chan Message
-	Users      []string
+	Rooms      map[string][]*Client
 }
 
 func NewPool() *Pool {
@@ -16,29 +16,48 @@ func NewPool() *Pool {
 		Unregister: make(chan *Client),
 		Clients:    make(map[*Client]bool),
 		Broadcast:  make(chan Message),
-		Users:      []string{},
+		Rooms: map[string][]*Client{
+			"1": {},
+			"2": {},
+			"3": {},
+			"4": {},
+			"5": {},
+			"6": {},
+		},
 	}
 }
-
 func (pool *Pool) Start() {
 	for {
 		select {
-		case client := <-pool.Register:
-			pool.Clients[client] = true
-			log.Info("Size of Connection Pool: ", len(pool.Clients))
-			log.Info("New user joined")
 
 		case client := <-pool.Unregister:
 			delete(pool.Clients, client)
+
+			for roomId, receivers := range pool.Rooms {
+				for i, receiver := range receivers {
+					if receiver == client {
+						// remove the element at index i from a.
+						pool.Rooms[roomId] = append(pool.Rooms[roomId][:i], pool.Rooms[roomId][i+1:]...)
+						break
+					}
+
+				}
+			}
+			
 			log.Info("Size of Connection Pool: ", len(pool.Clients))
-			log.Info(" Another One Bites the Dust Song by Queen")
+			log.Info(" Another One Bites the Dust")
 
 		case message := <-pool.Broadcast:
-			log.Info("Sending message to all clients in Pool")
-			for client := range pool.Clients {
-				if err := client.Conn.WriteJSON(message); err != nil {
-					log.Info(err)
-					return
+
+			if message.Data.RoomId != "" {
+				log.Info("Sending message to room: ", message.Data.RoomId)
+				if receivers, ok := pool.Rooms[message.Data.RoomId]; ok {
+					for _, receiver := range receivers {
+						if err := receiver.Conn.WriteJSON(message); err != nil {
+							log.Info(err)
+							return
+						}
+					}
 				}
 			}
 		}

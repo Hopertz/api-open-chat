@@ -9,24 +9,41 @@ import (
 )
 
 type Client struct {
-	ID   string
 	Conn *websocket.Conn
+
+	RemoteAddr string `json:"remote_addr"`
+
+	Uid string `json:"uid"`
+
+	Username string `json:"username"`
+
+	RoomId string `json:"room_id"`
+
 	Pool *Pool
 }
 
-// ints on Body Type
-// 0  for new user
-// 1  for normal text
-type Body struct {
-	Type int    `json:"type"`
-	Text string `json:"text"`
-	User string `json:"user"`
+const msgTypeJoin = 0
+const msgTypeLeave = 1
+const msgTypeRoom = 2
+const msgPrivate = 3
+
+type MsgData struct {
+	Uid      string        `json:"uid"`
+	Username string        `json:"username"`
+	AvatarId string        `json:"avatar_id"`
+	ToUid    string        `json:"to_uid"`
+	Content  string        `json:"content"`
+	ImageUrl string        `json:"image_url"`
+	RoomId   string        `json:"room_id"`
+	Count    int           `json:"count"`
+	List     []interface{} `json:"list"`
+	Time     int64         `json:"time"`
 }
 
 type Message struct {
-	Type  int      `json:"type"`
-	Body  Body     `json:"body"`
-	Users []string `json:"users"`
+	Status int             `json:"status"`
+	Data   MsgData         `json:"data"`
+	Conn   *websocket.Conn `json:"conn"`
 }
 
 func (c *Client) Read() {
@@ -36,28 +53,37 @@ func (c *Client) Read() {
 	}()
 
 	for {
-		messageType, p, err := c.Conn.ReadMessage()
+
+		fmt.Println(c.Pool.Rooms)
+		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		var data Body
-
-		if err := json.Unmarshal(p, &data); err != nil {
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err != nil {
 			continue
 		}
 
-		message := Message{Type: messageType, Body: data}
+		msgType := msg.Status
 
-		if message.Body.Type == 0 {
-			c.Pool.Users = append(c.Pool.Users, message.Body.User)
+		c.RoomId = msg.Data.RoomId
+		c.Username = msg.Data.Username
+		c.Uid = msg.Data.Uid
+
+		if msgType == msgTypeJoin {
+
+			if msg.Data.RoomId != "" {
+				if _, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
+					c.Pool.Rooms[msg.Data.RoomId] = append(c.Pool.Rooms[msg.Data.RoomId], c)
+					c.Pool.Clients[c] = true
+				}
+
+				c.Pool.Broadcast <- msg
+
+			}
 		}
 
-		message.Users = c.Pool.Users
-
-		c.Pool.Broadcast <- message
-
-		fmt.Printf("Message Received: %+v\n", message)
 	}
 }
