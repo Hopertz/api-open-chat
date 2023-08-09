@@ -2,6 +2,7 @@ package main
 
 import (
 	"github/hopertz/api-open-chat/internal/websocket"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,26 @@ func (app *application) ChatRoomHandler(c *gin.Context) {
 
 	room_id := c.Param("id")
 
+	var input struct {
+		Page     int `form:"page"`
+		PageSize int `form:"page_size" `
+	}
+
+	if err := c.ShouldBindQuery(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if input.Page == 0 {
+		input.Page = 1
+	}
+
+	if input.PageSize == 0 {
+		input.PageSize = 20
+	}
+
 	id, err := strconv.Atoi(room_id)
 
 	if err != nil {
@@ -29,7 +50,7 @@ func (app *application) ChatRoomHandler(c *gin.Context) {
 		return
 	}
 
-	messages, err := app.models.MessageModel.FetchRoomMessages(id, 0)
+	messages, err := app.models.MessageModel.FetchRoomMessages(id, input.Page, input.PageSize)
 
 	if err != nil {
 		c.JSON(500, gin.H{

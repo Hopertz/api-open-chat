@@ -32,7 +32,10 @@ func (m MessageModel) Insert(msg Message) error {
 	return nil
 }
 
-func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, error) {
+func (m MessageModel) FetchRoomMessages(roomID int, page , pageSize int) ([]Message, error) {
+
+	offset := (page - 1) * pageSize
+
 
 	query := `
         SELECT message.id, message.content , message.image_url , message.created_at , users.id
@@ -42,10 +45,10 @@ func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, erro
         AND message.to_user_id = $2
         ORDER BY message.id DESC
         OFFSET $3
-        LIMIT 100
+        LIMIT $4
     `
 
-	rows, err := m.DB.Query(query, roomID, 0, offset)
+	rows, err := m.DB.Query(query, roomID, 0, offset, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -67,5 +70,11 @@ func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, erro
 		return nil, err
 	}
 
+	// reverse the order of the messages
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	
 	return messages, nil
 }
