@@ -5,8 +5,11 @@ import (
 )
 
 type Models struct {
+	MessageModel MessageModel
 }
 
 func NewModels(db *sql.DB) Models {
-	return Models{}
+	return Models{
+		MessageModel: MessageModel{DB: db},
+	}
 }

@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"database/sql"
 	"fmt"
+	"github/hopertz/api-open-chat/internal/data"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -12,26 +12,26 @@ type Pool struct {
 	Unregister chan *Client
 	Clients    map[*Client]bool
 	Broadcast  chan Message
-	Rooms      map[string][]*Client
-	conn       *sql.DB
+	Rooms      map[int][]*Client
+	model      data.Models
 }
 
-func NewPool(conn *sql.DB) *Pool {
+func NewPool(model data.Models) *Pool {
 	return &Pool{
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		Clients:    make(map[*Client]bool),
 		Broadcast:  make(chan Message),
-		Rooms: map[string][]*Client{
-			"1": {},
-			"2": {},
-			"3": {},
-			"4": {},
-			"5": {},
-			"6": {},
+		Rooms: map[int][]*Client{
+			1: {},
+			2: {},
+			3: {},
+			4: {},
+			5: {},
+			6: {},
 		},
 
-		conn: conn,
+		model: model,
 	}
 }
 func (pool *Pool) Start() {
@@ -58,8 +58,8 @@ func (pool *Pool) Start() {
 
 		case message := <-pool.Broadcast:
 
-			if message.Data.RoomId != "" {
-				log.Info(message.Data.Username, " Has joined in room: ", message.Data.RoomId)
+			if message.Data.RoomId != 0 {
+				log.Info(message.Data.Uid, " Has joined in room: ", message.Data.RoomId)
 				if receivers, ok := pool.Rooms[message.Data.RoomId]; ok {
 					for _, receiver := range receivers {
 						if err := receiver.Conn.WriteJSON(message); err != nil {

@@ -3,7 +3,9 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"github/hopertz/api-open-chat/internal/data"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,11 +15,9 @@ type Client struct {
 
 	RemoteAddr string `json:"remote_addr"`
 
-	Uid string `json:"uid"`
+	Uid int `json:"uid"`
 
-	Username string `json:"username"`
-
-	RoomId string `json:"room_id"`
+	RoomId int `json:"room_id"`
 
 	Pool *Pool
 }
@@ -28,16 +28,12 @@ const msgTypeRoom = 2
 const msgPrivate = 3
 
 type MsgData struct {
-	Uid      string        `json:"uid"`
-	Username string        `json:"username"`
-	AvatarId string        `json:"avatar_id"`
-	ToUid    string        `json:"to_uid"`
+	Uid      int           `json:"uid"`
+	ToUid    int           `json:"to_uid"`
 	Content  string        `json:"content"`
 	ImageUrl string        `json:"image_url"`
-	RoomId   string        `json:"room_id"`
-	Count    int           `json:"count"`
-	List     []interface{} `json:"list"`
-	Time     int64         `json:"time"`
+	RoomId   int           `json:"room_id"`
+	Time     time.Time     `json:"time"`
 }
 
 type Message struct {
@@ -69,18 +65,17 @@ func (c *Client) Read() {
 		var msg Message
 
 		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Println(err)
 			continue
 		}
 
 		msgType := msg.Status
 
 		c.RoomId = msg.Data.RoomId
-		c.Username = msg.Data.Username
 		c.Uid = msg.Data.Uid
 
 		if msgType == msgTypeJoin {
-
-			if msg.Data.RoomId != "" {
+			if msg.Data.RoomId > 0 {
 				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
 
 					if !checkIfClientInroom(room, c) {
@@ -91,7 +86,21 @@ func (c *Client) Read() {
 				}
 			}
 		} else if msgType == msgTypeRoom {
-			if msg.Data.RoomId != "" {
+			if msg.Data.RoomId != 0 {
+				data := data.Message{
+					UserId:    c.Uid,
+					RoomId:    c.RoomId,
+					Content:   msg.Data.Content,
+					ImageUrl:  msg.Data.ImageUrl,
+					CreatedAt: time.Now(),
+				}
+
+				err := c.Pool.model.MessageModel.Insert(data)
+
+				if err != nil {
+					log.Println(err)
+				}
+
 				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
 					for _, receiver := range room {
 						if err := receiver.Conn.WriteJSON(msg); err != nil {

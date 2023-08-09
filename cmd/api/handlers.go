@@ -11,6 +11,4 @@ func (app *application) ChatHandler(ctx *gin.Context) {
 
 	websocket.ServeWs(app.pool, w, r)
 
-	
-
 }

@@ -6,29 +6,28 @@ import (
 )
 
 type Message struct {
-	ID        string
-	UserId    string
-	ToUserId  string
+	ID        int
+	UserId    int
+	ToUserId  int
 	RoomId    int
 	Content   string
 	ImageUrl  string
 	CreatedAt time.Time
-	UpdatedAt time.Time
 }
 
 type MessageModel struct {
 	DB *sql.DB
 }
 
-func (m MessageModel) Insert(userId int, toUserId int, roomId int, content string, imageUrl string) (string, error) {
-	stmt := `INSERT INTO messages (user_id, to_user_id, room_id, content, image_url, created_at, updated_at)
-	VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+func (m MessageModel) Insert(msg Message) error {
+	stmt := `INSERT INTO message (user_id, to_user_id, room_id, content, image_url, created_at)
+	VALUES ($1, $2, $3, $4, $5, $6)`
 
-	var id string
-	err := m.DB.QueryRow(stmt, userId, toUserId, roomId, content, imageUrl, time.Now(), time.Now()).Scan(&id)
+	args := []interface{}{msg.UserId, msg.ToUserId, msg.RoomId, msg.Content, msg.ImageUrl, msg.CreatedAt}
+	_, err := m.DB.Exec(stmt, args...)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return id, nil
+	return nil
 }

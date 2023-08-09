@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
-	"fmt"
+	"github/hopertz/api-open-chat/internal/data"
 	"github/hopertz/api-open-chat/internal/websocket"
 	"os"
 	"sync"
@@ -30,7 +30,6 @@ type application struct {
 	config config
 	pool   *websocket.Pool
 	wg     sync.WaitGroup
-	conn   *sql.DB
 }
 
 func main() {
@@ -45,23 +44,21 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Println(os.Getenv("CHAT_DB_DSN"))
-
 	conn, err := openDB(cfg)
+
 	if err != nil {
 		log.Fatal(err, nil)
 	}
 
 	defer conn.Close()
 
-	log.Info("database connection pool established", nil)
+	log.Info("Database connection pool established")
 
-	pool := websocket.NewPool(conn)
+	pool := websocket.NewPool(data.NewModels(conn))
 
 	app := &application{
 		config: cfg,
 		pool:   pool,
-		conn:   conn,
 	}
 
 	go pool.Start()
