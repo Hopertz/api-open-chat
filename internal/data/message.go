@@ -35,10 +35,10 @@ func (m MessageModel) Insert(msg Message) error {
 func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, error) {
 
 	query := `
-        SELECT message.id, message.content , message.image_url , users.id
+        SELECT message.id, message.content , message.image_url , message.created_at , users.id
         FROM message
         INNER JOIN users ON users.id = message.user_id
-        WHERE messages.room_id = $1
+        WHERE message.room_id = $1
         AND message.to_user_id = $2
         ORDER BY message.id DESC
         OFFSET $3
@@ -55,7 +55,7 @@ func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, erro
 	for rows.Next() {
 		var message Message
 		err := rows.Scan(
-			&message.ID, &message.Content, &message.ImageUrl, &message.UserId,
+			&message.ID, &message.Content, &message.ImageUrl, &message.CreatedAt, &message.UserId,
 		)
 		if err != nil {
 			return nil, err
