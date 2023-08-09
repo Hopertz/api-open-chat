@@ -25,6 +25,8 @@ func (app *application) ChatRoomHandler(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"error": err.Error(),
 		})
+
+		return
 	}
 
 	messages, err := app.models.MessageModel.FetchRoomMessages(id, 0)
@@ -33,6 +35,8 @@ func (app *application) ChatRoomHandler(c *gin.Context) {
 		c.JSON(500, gin.H{
 			"error": err.Error(),
 		})
+
+		return
 	}
 
 	c.JSON(200, gin.H{

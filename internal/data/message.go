@@ -33,9 +33,9 @@ func (m MessageModel) Insert(msg Message) error {
 }
 
 func (m MessageModel) FetchRoomMessages(roomID int, offset int) ([]Message, error) {
-	
+
 	query := `
-        SELECT message.id, message.content , message.image_url , users.id,
+        SELECT message.id, message.content , message.image_url , users.id
         FROM message
         INNER JOIN users ON users.id = message.user_id
         WHERE messages.room_id = $1

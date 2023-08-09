@@ -11,7 +11,7 @@ func (app *application) routes() *gin.Engine {
 
 	r.GET("/ws", app.ChatHandler)
 
-	r.POST("/room/:id", app.ChatRoomHandler)
+	r.GET("/rooms/:id", app.ChatRoomHandler)
 
 	r.Use(enableCORS())
 
