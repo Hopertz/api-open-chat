@@ -30,6 +30,7 @@ type application struct {
 	config config
 	pool   *websocket.Pool
 	wg     sync.WaitGroup
+	models data.Models
 }
 
 func main() {
@@ -54,11 +55,13 @@ func main() {
 
 	log.Info("Database connection pool established")
 
-	pool := websocket.NewPool(data.NewModels(conn))
+	dbConn :=  data.NewModels(conn)
+	pool := websocket.NewPool(dbConn)
 
 	app := &application{
 		config: cfg,
 		pool:   pool,
+		models: dbConn,
 	}
 
 	go pool.Start()
