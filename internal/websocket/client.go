@@ -28,12 +28,12 @@ const msgTypeRoom = 2
 const msgPrivate = 3
 
 type MsgData struct {
-	Uid      int           `json:"uid"`
-	ToUid    int           `json:"to_uid"`
-	Content  string        `json:"content"`
-	ImageUrl string        `json:"image_url"`
-	RoomId   int           `json:"room_id"`
-	Time     time.Time     `json:"time"`
+	Uid      int       `json:"uid"`
+	ToUid    int       `json:"to_uid"`
+	Content  string    `json:"content"`
+	ImageUrl string    `json:"image_url"`
+	RoomId   int       `json:"room_id"`
+	Time     time.Time `json:"time"`
 }
 
 type Message struct {
@@ -74,7 +74,8 @@ func (c *Client) Read() {
 		c.RoomId = msg.Data.RoomId
 		c.Uid = msg.Data.Uid
 
-		if msgType == msgTypeJoin {
+		switch {
+		case msgType == msgTypeJoin:
 			if msg.Data.RoomId > 0 {
 				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
 
@@ -85,7 +86,7 @@ func (c *Client) Read() {
 
 				}
 			}
-		} else if msgType == msgTypeRoom {
+		case msgType == msgTypeRoom:
 			if msg.Data.RoomId != 0 {
 				data := data.Message{
 					UserId:    c.Uid,
