@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github/hopertz/api-open-chat/internal/data"
 
-	log "github.com/sirupsen/logrus"
+	"log/slog"
 )
 
 type Pool struct {
 	Register   chan *Client
 	Unregister chan *Client
-	Clients    map[*Client]bool
+	Clients    map[*Client]int
 	Broadcast  chan Message
 	Rooms      map[int][]*Client
 	model      data.Models
@@ -20,7 +20,7 @@ func NewPool(model data.Models) *Pool {
 	return &Pool{
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
-		Clients:    make(map[*Client]bool),
+		Clients:    make(map[*Client]int),
 		Broadcast:  make(chan Message),
 		Rooms: map[int][]*Client{
 			1: {},
@@ -52,23 +52,31 @@ func (pool *Pool) Start() {
 				}
 			}
 
-			log.Info("Size of Connection Pool: ", len(pool.Clients))
-			fmt.Println(pool.Clients)
-			log.Info(" Another One Bites the Dust")
+			slog.Info("User left the connection: ", "id", client.Uid)
+			slog.Info("Pool size Remaining", "length", len(pool.Clients))
 
 		case message := <-pool.Broadcast:
-
-			if message.Data.RoomId != 0 {
-				log.Info(message.Data.Uid, " Has joined in room: ", message.Data.RoomId)
-				if receivers, ok := pool.Rooms[message.Data.RoomId]; ok {
-					for _, receiver := range receivers {
-						if err := receiver.Conn.WriteJSON(message); err != nil {
-							log.Info(err)
-							return
+			var msg map[int]string
+			if message.Status == 0 {
+				msg = map[int]string{
+					message.Data.Uid: fmt.Sprintf("Has joined in room %d: ", message.Data.RoomId),
+				}
+			} else {
+				msg = map[int]string{
+					message.Data.Uid: message.Data.Content,
+				}
+			}
+			if room, ok := pool.Rooms[message.Data.RoomId]; ok {
+				for _, receiver := range room {
+					if message.Conn != receiver.Conn {
+						if err := receiver.Conn.WriteJSON(msg); err != nil {
+							slog.Error("Error writing message to client in room", slog.Group("room", message.Data.RoomId, "client", receiver.Uid, "error", err))
+							continue
 						}
 					}
 				}
 			}
+
 		}
 	}
 }

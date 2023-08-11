@@ -2,9 +2,8 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"github/hopertz/api-open-chat/internal/data"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -23,9 +22,10 @@ type Client struct {
 }
 
 const msgTypeJoin = 0
-const msgTypeLeave = 1
-const msgTypeRoom = 2
-const msgPrivate = 3
+
+// const msgTypeLeave = 1
+const msgTypeRoomChat = 2
+const msgPrivateChat = 3
 
 type MsgData struct {
 	Uid      int       `json:"uid"`
@@ -42,6 +42,11 @@ type Message struct {
 	Conn   *websocket.Conn `json:"conn"`
 }
 
+func (c *Client) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("Client Address", c.RemoteAddr),)
+}
+
 func (c *Client) Read() {
 	defer func() {
 		c.Pool.Unregister <- c
@@ -50,33 +55,34 @@ func (c *Client) Read() {
 
 	for {
 
-		c.Pool.Clients[c] = true // add client to pool
-
-		fmt.Println(c.Pool.Clients)
-		fmt.Println(c.Pool.Rooms)
-
 		_, message, err := c.Conn.ReadMessage()
 
 		if err != nil {
-			log.Println(err)
+			slog.Error("Error reading message", "error", err)
 			return
 		}
 
 		var msg Message
 
 		if err := json.Unmarshal(message, &msg); err != nil {
-			log.Println(err)
+			slog.Error("Error unmarshaling Json message", "error", err)
 			continue
 		}
 
 		msgType := msg.Status
 
+		msg.Conn = c.Conn
 		c.RoomId = msg.Data.RoomId
 		c.Uid = msg.Data.Uid
+
+		if _, ok := c.Pool.Clients[c]; !ok {
+			c.Pool.Clients[c] = msg.Data.Uid
+		}
 
 		switch {
 		case msgType == msgTypeJoin:
 			if msg.Data.RoomId > 0 {
+
 				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
 
 					if !checkIfClientInroom(room, c) {
@@ -86,7 +92,7 @@ func (c *Client) Read() {
 
 				}
 			}
-		case msgType == msgTypeRoom:
+		case msgType == msgTypeRoomChat:
 			if msg.Data.RoomId != 0 {
 				data := data.Message{
 					UserId:    c.Uid,
@@ -99,13 +105,32 @@ func (c *Client) Read() {
 				err := c.Pool.model.MessageModel.Insert(data)
 
 				if err != nil {
-					log.Println(err)
+					slog.Error(err.Error())
 				}
 
-				if room, ok := c.Pool.Rooms[msg.Data.RoomId]; ok {
-					for _, receiver := range room {
-						if err := receiver.Conn.WriteJSON(msg); err != nil {
-							log.Println(err)
+				c.Pool.Broadcast <- msg
+			}
+
+		case msgType == msgPrivateChat:
+			if msg.Data.ToUid != 0 {
+				data := data.Message{
+					UserId:    c.Uid,
+					ToUserId:  msg.Data.ToUid,
+					Content:   msg.Data.Content,
+					ImageUrl:  msg.Data.ImageUrl,
+					CreatedAt: time.Now(),
+				}
+
+				err := c.Pool.model.MessageModel.Insert(data)
+
+				if err != nil {
+					slog.Error("Error inserting message to the database", "error", err)
+				}
+
+				for cli, uid := range c.Pool.Clients {
+					if uid == msg.Data.ToUid {
+						if err := cli.Conn.WriteJSON(msg); err != nil {
+							slog.Error("Error sending private msg to client", "error", err)
 							return
 						}
 					}

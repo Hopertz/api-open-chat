@@ -32,10 +32,9 @@ func (m MessageModel) Insert(msg Message) error {
 	return nil
 }
 
-func (m MessageModel) FetchRoomMessages(roomID int, page , pageSize int) ([]Message, error) {
+func (m MessageModel) FetchRoomMessages(roomID int, page, pageSize int) ([]Message, error) {
 
 	offset := (page - 1) * pageSize
-
 
 	query := `
         SELECT message.id, message.content , message.image_url , message.created_at , users.id
@@ -75,6 +74,5 @@ func (m MessageModel) FetchRoomMessages(roomID int, page , pageSize int) ([]Mess
 		messages[i], messages[j] = messages[j], messages[i]
 	}
 
-	
 	return messages, nil
 }

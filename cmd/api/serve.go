@@ -47,7 +47,7 @@ func (app *application) serve() error {
 	})
 
 	app.wg.Wait()
-	
+
 	log.Info("Server exiting")
 
 	return nil

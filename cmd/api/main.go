@@ -12,7 +12,8 @@ import (
 
 	_ "github.com/lib/pq"
 
-	log "github.com/sirupsen/logrus"
+	"log"
+	"log/slog"
 )
 
 type config struct {
@@ -31,6 +32,14 @@ type application struct {
 	pool   *websocket.Pool
 	wg     sync.WaitGroup
 	models data.Models
+}
+
+func init() {
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	slog.SetDefault(logger)
+
 }
 
 func main() {
@@ -53,9 +62,7 @@ func main() {
 
 	defer conn.Close()
 
-	log.Info("Database connection pool established")
-
-	dbConn :=  data.NewModels(conn)
+	dbConn := data.NewModels(conn)
 	pool := websocket.NewPool(dbConn)
 
 	app := &application{
@@ -66,7 +73,10 @@ func main() {
 
 	go pool.Start()
 
+	slog.Info("Starting server on port", "port", cfg.port)
+
 	err = app.serve()
+
 	if err != nil {
 		log.Fatal(err, nil)
 	}

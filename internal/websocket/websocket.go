@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -17,14 +17,14 @@ var upgrader = websocket.Upgrader{
 func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		slog.Error(err.Error())
 		return ws, err
 	}
 	return ws, nil
 }
 
 func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("WebSocket Endpoint Hit")
+
 	conn, err := Upgrade(w, r)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
@@ -36,7 +36,8 @@ func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
 		RemoteAddr: conn.RemoteAddr().String(),
 	}
 
-	fmt.Println("Client Connected", client.RemoteAddr)
-
+	slog.Info("Client Connected", "client IP addr", client,
+			"Previous length of clients", len(pool.Clients),
+		)
 	client.Read()
 }
