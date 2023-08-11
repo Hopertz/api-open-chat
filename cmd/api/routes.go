@@ -13,6 +13,8 @@ func (app *application) routes() *gin.Engine {
 
 	r.GET("/rooms/:id", app.ChatRoomHandler)
 
+	r.GET("/private/:id", app.ChatPrivateHandler)
+
 	r.Use(enableCORS())
 
 	return r

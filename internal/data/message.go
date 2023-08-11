@@ -76,3 +76,53 @@ func (m MessageModel) FetchRoomMessages(roomID int, page, pageSize int) ([]Messa
 
 	return messages, nil
 }
+
+
+func (m MessageModel) FetchPrivateMessages(userID, toUserID int, page, pageSize int) ([]Message, error) {
+
+	offset := (page - 1) * pageSize
+
+	query := `
+		SELECT message.id, message.content , message.image_url , message.created_at , users.id
+		FROM message
+		INNER JOIN users ON users.id = message.user_id
+		WHERE message.user_id = $1
+		AND message.to_user_id = $2
+		OR message.user_id = $2
+		AND message.to_user_id = $1
+		ORDER BY message.id DESC
+		OFFSET $3
+		LIMIT $4
+	`
+
+	rows, err := m.DB.Query(query, userID, toUserID, offset, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var message Message
+		err := rows.Scan(
+			&message.ID, &message.Content, &message.ImageUrl, &message.CreatedAt, &message.UserId,
+		)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, message)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// reverse the order of the messages
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages, nil
+
+
+}
